@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+#
+# Bash script to switch gnome theme between light and dark mode
+
+# Global constants
+readonly GSETTINGS="/usr/bin/gsettings"
+readonly GNOME_THEME_SCHEMA="org.gnome.desktop.interface"
+readonly GNOME_THEME_KEY="color-scheme"
+readonly GNOME_LEGACY_THEME_KEY="gtk-theme"
+
+##########################
+# Print usage for help
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes usage to stdout
+##########################
+function print_help()
+{
+    echo "Usage: $(basename -- "$0") [-s {light, dark}]"
+    echo "Switches gnome theme"
+    echo
+    echo "-h, --help    prints this message"
+    echo "-s, --set     set theme to light/dark"
+}
+
+########################
+# Switch to light theme
+# Globals:
+# Arguments:
+# Outputs:
+########################
+function set_light_theme()
+{
+    #gsettings set org.gnome.desktop.interface color-scheme 'default'
+    #gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'
+    local readonly light_theme="default"
+    local readonly light_legacy_theme="Adwaita"
+    echo "Switching to light theme"
+    "${GSETTINGS}" set "${GNOME_THEME_SCHEMA}" "${GNOME_THEME_KEY}" "${light_theme}" \
+        && "${GSETTINGS}" set "${GNOME_THEME_SCHEMA}" "${GNOME_LEGACY_THEME_KEY}" "${light_legacy_theme}"
+}
+
+########################
+# Switch to dark theme
+# Globals:
+# Arguments:
+# Outputs:
+########################
+function set_dark_theme()
+{
+    #gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+    #gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'
+    local readonly dark_theme="prefer-dark"
+    local readonly dark_legacy_theme="Adwaita-dark"
+    echo "Switching to dark theme"
+    "${GSETTINGS}" set "${GNOME_THEME_SCHEMA}" "${GNOME_THEME_KEY}" "${dark_theme}" \
+        && "${GSETTINGS}" set "${GNOME_THEME_SCHEMA}" "${GNOME_LEGACY_THEME_KEY}" "${dark_legacy_theme}"
+}
+
+##############################################
+# Get current theme
+# Globals:
+#   GSETTINGS, GNOME_THEME, GNOME_LEGACY_THEME
+# Arguments:
+#   None
+# Outputs:
+#   Writes current theme to stdout
+##############################################
+function get_theme()
+{
+    local current_theme
+    current_theme="$("${GSETTINGS}" get "${GNOME_THEME_SCHEMA}" "${GNOME_THEME_KEY}")"
+
+    local current_legacy_theme
+    current_legacy_theme="$("${GSETTINGS}" get "${GNOME_THEME_SCHEMA}" ${GNOME_LEGACY_THEME_KEY})"
+
+    echo "Theme: ${current_theme}"
+    echo "Legacy Theme: ${current_legacy_theme}"
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in 
+        -h|--help)
+            print_help
+            exit
+            ;;
+        -s|--set)
+            THEME="$2"
+            shift 2
+            ;;
+        -*|--*)
+            echo "Unknown option $1"
+            print_help
+            exit 1
+            ;;
+        *)
+            # Ignore positional args
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "${THEME}" ]]; then
+    get_theme
+elif [[ "${THEME}" == "light" ]]; then
+    set_light_theme
+elif [[ "${THEME}" == "dark" ]]; then
+    set_dark_theme
+else
+    echo "Invalid --set value: ${THEME}"
+    print_help
+    exit 1
+fi

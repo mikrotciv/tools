@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#
+# Script to download and install latest version of Mullvad desktop app
+
+# Global constants
+readonly URL_Mullvad="https://mullvad.net/download/app/rpm/latest"
+
+######################################
+# Clean up downloaded file
+# Globals:
+#   None
+# Arguments:
+#   file_name
+# Output:
+#   Writes deleted file name to stdout
+######################################
+function cleanup()
+{
+    local file_name=$1; shift
+    if rm -i "${file_name}"; then
+        echo "Removed file: ${file_name}"
+    else
+        echo "Error while trying to remove file: ${file_name}"
+    fi
+}
+
+# Check necessary tools are installed
+if ! command -v -- wget &> /dev/null; then
+  echo "wget not found. Please install"
+  exit 1
+fi
+
+# Check existing version 
+# (Assuming there is only one mullvad installed)
+current_version=$(dnf list --installed | awk '/mullvad*/ {print $2}')
+
+# Get latest version
+latest_version=$(wget -nv --spider ${URL_Mullvad} 2>&1 | sed -n 's/^.*MullvadVPN-\(.*\)_x86_64\.rpm.*$/\1/p')
+
+# Compare versions
+if [[ $(cut -f 1,2 -d '.' <<< "${current_version}") == "${latest_version}" ]]; then
+  echo "Already have the latest version: ${current_version}"
+  exit 0
+fi
+
+# Update to latest version
+echo "Updating mullvad from version ${current_version} to ${latest_version}"
+wget -nv --content-disposition ${URL_Mullvad} -P ~/Downloads
+
+package_fullpath="${HOME}/Downloads/MullvadVPN-${latest_version}_x86_64.rpm"
+sudo dnf install -y "${package_fullpath}"
+trap "cleanup ${package_fullpath}" EXIT
