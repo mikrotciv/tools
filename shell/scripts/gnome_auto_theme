@@ -19,11 +19,11 @@ readonly GNOME_LEGACY_THEME_KEY="gtk-theme"
 ##########################
 function print_help()
 {
-    echo "Usage: $(basename -- "$0") [-s THEME]"
+    echo "Usage: $(basename -- "$0") [-s {light, dark}]"
     echo "Switches gnome theme"
     echo
     echo "-h, --help    prints this message"
-    echo "-s, --set     set theme to THEME"
+    echo "-s, --set     set theme to light/dark"
 }
 
 ########################
