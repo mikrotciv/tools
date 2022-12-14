@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+# Bash script to backup home directory
+
+source ../lib/logging.sh
+
+# Global constants
+readonly BACKUP_DIR="/run/media/${USER}/T7/Backup/fedora/"
+
+##########################
+# Print usage for help
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes usage to stdout
+##########################
+function print_help() {
+    echo "Usage: $(basename -- "$0") [-h] [--new]"
+    echo "Backup home directory using borg"
+    echo
+    echo "-h, --help    prints this message"
+    echo "--new         prints instructions on initializing a new borg repo"
+}
+
+#############################
+# Preprocess checks before
+# running main function
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes preprocess results
+#############################
+function preprocess() {
+  logging::debug "Checking if borg is installed"
+  if ! command -v -- borg &> /dev/null; then
+    logging::error "borg not found. Please install"
+    exit 1
+  fi
+
+  logging::debug "Checking if backup dir exists"
+  if [[ ! -d ${BACKUP_DIR} ]]; then
+    logging::error "Backup directory doesn't exist: ${BACKUP_DIR}"
+    exit 1
+  fi
+}
+
+function main() {
+  logging::set_level LOG_DEBUG
+  preprocess
+
+  if [[ ${isNew} == true ]]; then
+    logging::info "Run the following command: borg init --encryption repokey /path/to/repo"
+    logging::info "More info can be found in: https://borgbackup.readthedocs.io/en/stable/usage/init.html#"
+    logging::info "Once repository is initialized, rerun this script without the --new flag"
+    exit 0
+  fi
+
+  logging::info "Starting to backup"
+  # Archive name format: hostname_YYYY.MM.DD_HH:MM:SS
+  local archive_name="${HOSTNAME}_$(date +'%Y.%m.%d_%H:%M:%S')"
+
+  logging::debug "Running: borg create --stats ${BACKUP_DIR}::${archive_name} ${HOME}"
+  borg create --stats "${BACKUP_DIR}::${archive_name}" ${HOME}
+
+  logging::info "Finished backing up to: ${BACKUP_DIR}::${archive_name}"
+}
+
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -h|--help)
+      print_help
+      exit
+      ;;
+    --new)
+      isNew=true
+      shift
+      ;;
+    *)
+      # Ignore positional args
+      shift
+      ;;
+  esac
+done
+
+main
