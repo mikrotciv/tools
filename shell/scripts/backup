@@ -17,11 +17,12 @@ readonly BACKUP_DIR="/run/media/${USER}/T7/Backup/fedora/"
 #   Writes usage to stdout
 ##########################
 function print_help() {
-    echo "Usage: $(basename -- "$0") [-h] [--new]"
-    echo "Backup home directory using borg"
+    echo "Usage: $(basename -- "$0") [-h] [--new] [--postcheck]"
+    echo "Backup home directory using restic"
     echo
     echo "-h, --help    prints this message"
-    echo "--new         prints instructions on initializing a new borg repo"
+    echo "--new         prints instructions on initializing a new restic repo"
+    echo "--postcheck   runs integrrity check after backup"
 }
 
 #############################
@@ -35,9 +36,9 @@ function print_help() {
 #   Writes preprocess results
 #############################
 function preprocess() {
-  logging::debug "Checking if borg is installed"
-  if ! command -v -- borg &> /dev/null; then
-    logging::error "borg not found. Please install"
+  logging::debug "Checking if restic is installed"
+  if ! command -v -- restic &> /dev/null; then
+    logging::error "restic not found. Please install"
     exit 1
   fi
 
@@ -53,20 +54,22 @@ function main() {
   preprocess
 
   if [[ ${isNew} == true ]]; then
-    logging::info "Run the following command: borg init --encryption repokey /path/to/repo"
-    logging::info "More info can be found in: https://borgbackup.readthedocs.io/en/stable/usage/init.html#"
+    logging::info "Run the following command: restic init --repo /path/to/repo"
+    logging::info "More info can be found in: https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html"
     logging::info "Once repository is initialized, rerun this script without the --new flag"
     exit 0
   fi
 
   logging::info "Starting to backup"
-  # Archive name format: hostname_YYYY.MM.DD_HH:MM:SS
-  local archive_name="${HOSTNAME}_$(date +'%Y.%m.%d_%H:%M:%S')"
+  logging::debug "Running: restic -r ${BACKUP_DIR} --verbose backup ${HOME}"
+  restic -r "${BACKUP_DIR}" --verbose backup ${HOME}
 
-  logging::debug "Running: borg create --stats ${BACKUP_DIR}::${archive_name} ${HOME}"
-  borg create --stats "${BACKUP_DIR}::${archive_name}" ${HOME}
+  logging::info "Finished backing up to: ${BACKUP_DIR}"
 
-  logging::info "Finished backing up to: ${BACKUP_DIR}::${archive_name}"
+  if [[ ${doPostCheck} == true ]]; then
+    logging::info "Performing post check"
+    restic -r ${BACKUP_DIR} check --read-data
+  fi
 }
 
 # Parse args
@@ -78,6 +81,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --new)
       isNew=true
+      shift
+      ;;
+    --postcheck)
+      doPostCheck=true
       shift
       ;;
     *)
